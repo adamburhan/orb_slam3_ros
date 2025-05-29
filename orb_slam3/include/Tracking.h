@@ -42,10 +42,14 @@
 #include <mutex>
 #include <unordered_set>
 
+// *** DATA LOGGING START ***
 #ifdef ROS_FOUND
 #include <ros/ros.h>
 #include <orb_slam3_ros/VOStats.h>
+#include <geometry_msgs/PoseStamped.h>
 #endif
+// *** DATA LOGGING END ***
+
 
 namespace ORB_SLAM3
 {
@@ -203,9 +207,12 @@ public:
     vector<double> vdTrackTotal_ms;
 #endif
 
+// *** DATA LOGGING START ***
 #ifdef ROS_FOUND
     ros::Publisher vo_stats_pub_;
+    ros::Publisher edge_pub_;
 #endif
+// *** DATA LOGGING END ***
 
 protected:
 

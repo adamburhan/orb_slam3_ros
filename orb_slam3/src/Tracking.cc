@@ -165,10 +165,13 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     vdTrackTotal_ms.clear();
 #endif
 
+// *** DATA LOGGING START ***
 #ifdef ROS_FOUND
     ros::NodeHandle nh("~");
     vo_stats_pub_ = nh.advertise<orb_slam3_ros::VOStats>("/orb_slam3/vo_stats", 50);
+    edge_pub_ = nh.advertise<geometry_msgs::PoseStamped>("/orb_slam3/vo_edge_pose", 50);
 #endif
+// *** DATA LOGGING END ***
 }
 
 #ifdef REGISTER_TIMES
@@ -2251,6 +2254,28 @@ void Tracking::Track()
                 Sophus::SE3f LastTwc = mLastFrame.GetPose().inverse();
                 mVelocity = mCurrentFrame.GetPose() * LastTwc;
                 mbVelocity = true;
+
+                // *** DATA LOGGING START ***
+
+                #ifdef ROS_FOUND
+                geometry_msgs::PoseStamped pose_msg;
+                pose_msg.header.stamp = ros::Time(mCurrentFrame.mTimeStamp);
+
+                pose_msg.pose.position.x = mVelocity.translation().x();
+                pose_msg.pose.position.y = mVelocity.translation().y();
+                pose_msg.pose.position.z = mVelocity.translation().z();
+
+                pose_msg.pose.orientation.w = mVelocity.unit_quaternion().coeffs().w();
+                pose_msg.pose.orientation.x = mVelocity.unit_quaternion().coeffs().x();
+                pose_msg.pose.orientation.y = mVelocity.unit_quaternion().coeffs().y();
+                pose_msg.pose.orientation.z = mVelocity.unit_quaternion().coeffs().z();
+
+                edge_pub_.publish(pose_msg);
+
+                #endif
+
+                // *** DATA LOGGING END ***
+
             }
             else {
                 mbVelocity = false;
@@ -3067,6 +3092,27 @@ bool Tracking::TrackLocalMap()
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
         }
     }
+
+
+    // *** DATA LOGGING START ***
+    #ifdef ROS_FOUND
+
+    orb_slam3_ros::VOStats stats_msg;
+
+    std_msgs::Header header;
+    header.stamp = ros::Time(mCurrentFrame.mTimeStamp);
+    header.frame_id = std::to_string(mCurrentFrame.mnId);
+
+    stats_msg.header = header;
+
+    stats_msg.n_tracked = aux1;
+    stats_msg.n_inliers = mnMatchesInliers++;
+
+    vo_stats_pub_.publish(stats_msg);
+
+    #endif 
+
+    // *** DATA LOGGING END ***
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
